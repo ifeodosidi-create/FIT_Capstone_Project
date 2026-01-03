@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from faker import Faker
 
 from app.db import SessionLocal
@@ -8,8 +8,13 @@ from app.models import Category, Room, Customer, Booking, Payment, Transaction
 fake = Faker("ru_RU")
 db = SessionLocal()
 
+BREAKFAST_PRICE = 0      # завтрак включён
+LUNCH_PRICE = 600
+DINNER_PRICE = 800
+
+
 # -----------------------------
-# 1. Создание категорий номеров
+# 1. Категории
 # -----------------------------
 def seed_categories():
     categories = [
@@ -28,7 +33,7 @@ def seed_categories():
 
 
 # -----------------------------
-# 2. Создание 50 номеров
+# 2. Номера
 # -----------------------------
 def seed_rooms():
     categories = db.query(Category).all()
@@ -48,7 +53,7 @@ def seed_rooms():
 
 
 # -----------------------------
-# 3. Создание 80 клиентов
+# 3. Клиенты
 # -----------------------------
 def seed_customers():
     for _ in range(80):
@@ -64,15 +69,11 @@ def seed_customers():
 
 
 # -----------------------------
-# 4. Создание 100 бронирований
+# 4. Бронирования
 # -----------------------------
 def seed_bookings():
     rooms = db.query(Room).all()
     customers = db.query(Customer).all()
-
-    BREAKFAST_PRICE = 300
-    LUNCH_PRICE = 600
-    DINNER_PRICE = 800
 
     for _ in range(100):
         room = random.choice(rooms)
@@ -85,29 +86,48 @@ def seed_bookings():
 
         # питание
         breakfast_count = guests * nights
-        lunch_count = (guests * nights) if random.choice([True, False]) else 0
-        dinner_count = (guests * nights) if random.choice([True, False]) else 0
+        lunch_selected = random.choice([True, False])
+        dinner_selected = random.choice([True, False])
+
+        lunch_count = guests * nights if lunch_selected else 0
+        dinner_count = guests * nights if dinner_selected else 0
+
+        # скидки
+        is_repeat = random.choice([True, False])
+        discount_repeat = 5.0 if is_repeat else 0.0
+        discount_nights = 5.0 if nights >= 3 else 0.0
+        discount_sum = discount_repeat + discount_nights
 
         # расчёт стоимости
         base_amount = nights * room.price_per_night
-        meals_total = breakfast_count * BREAKFAST_PRICE + lunch_count * LUNCH_PRICE + dinner_count * DINNER_PRICE
-        final_amount = base_amount + meals_total
+        meals_total = (
+            breakfast_count * BREAKFAST_PRICE +
+            lunch_count * LUNCH_PRICE +
+            dinner_count * DINNER_PRICE
+        )
+        subtotal = base_amount + meals_total
+        final_amount = round(subtotal * (1 - discount_sum / 100))
+
+        status = random.choice(["created", "paid", "cancelled"])
 
         booking = Booking(
             room_id=room.id,
             customer_id=customer.id,
             start_date=start_date,
             end_date=end_date,
-            total_amount=base_amount,
-            status=random.choice(["confirmed", "completed", "cancelled"]),
+            created_at=start_date - timedelta(days=random.randint(1, 30)),
             guests_count=guests,
             breakfast_count=breakfast_count,
             lunch_count=lunch_count,
             dinner_count=dinner_count,
-            discount_nights=0.0,
-            discount_repeat=0.0,
-            final_amount=final_amount
+            is_repeat_within_year=is_repeat,
+            discount_repeat=discount_repeat,
+            discount_nights=discount_nights,
+            total_amount=subtotal,
+            final_amount=final_amount,
+            status=status
         )
+
         db.add(booking)
 
     db.commit()
@@ -115,28 +135,28 @@ def seed_bookings():
 
 
 # -----------------------------
-# 5. Создание платежей и транзакций
+# 5. Платежи и транзакции
 # -----------------------------
 def seed_payments_and_transactions():
     bookings = db.query(Booking).all()
 
     for booking in bookings:
-        if booking.status == "cancelled":
+        if booking.status != "paid":
             continue
 
-        amount = booking.final_amount
         payment = Payment(
             booking_id=booking.id,
-            amount=amount,
+            amount=booking.final_amount,
             payment_date=booking.start_date,
-            method=random.choice(["cash", "card", "online", "bank"])
+            method=random.choice(["cash", "card", "online", "bank"]),
+            status="success"
         )
         db.add(payment)
         db.commit()
 
         transaction = Transaction(
             payment_id=payment.id,
-            amount=amount,
+            amount=payment.amount,
             transaction_date=payment.payment_date,
             type="income"
         )
@@ -147,7 +167,7 @@ def seed_payments_and_transactions():
 
 
 # -----------------------------
-# Запуск всех функций
+# Запуск
 # -----------------------------
 if __name__ == "__main__":
     seed_categories()

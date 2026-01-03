@@ -1,8 +1,9 @@
 from flask import Flask
 from app.db import init_db
 from app.gui import gui_bp
-from app.client import client_bp   # ✅ без routes
-from app.admin import admin_bp     # ✅ без routes
+from app.client_routes import client_bp
+from app.admin_routes import admin_bp
+
 
 def create_app():
     app = Flask(__name__)

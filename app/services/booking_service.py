@@ -44,3 +44,46 @@ def calculate_booking_amount(data: BookingInput) -> dict:
         "discount_sum_percent": discount_sum_percent,
         "final_amount": final_amount,
     }
+from datetime import date
+from app.models import Booking
+from .booking_service import calculate_booking_amount, BookingInput
+
+
+def create_booking(session, room_id: int, customer_id: int, data: BookingInput) -> dict:
+    """
+    Создаёт бронирование в базе данных.
+    """
+
+    # 1. Расчёт стоимости
+    calc = calculate_booking_amount(data)
+
+    # 2. Создание объекта Booking
+    booking = Booking(
+        room_id=room_id,
+        customer_id=customer_id,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        guests_count=data.guests_count,
+        breakfast_count=data.guests_count * data.nights,  # завтрак включён
+        lunch_count=data.guests_count * data.nights if data.lunch_selected else 0,
+        dinner_count=data.guests_count * data.nights if data.dinner_selected else 0,
+        is_repeat_within_year=data.is_repeat_within_year,
+        discount_repeat=calc["discount_repeat"],
+        discount_nights=calc["discount_nights"],
+        total_amount=calc["base_total"] + calc["meals_total"],
+        final_amount=calc["final_amount"],
+        status="created",
+        created_at=date.today()
+    )
+
+    # 3. Сохранение в БД
+    session.add(booking)
+    session.commit()
+    session.refresh(booking)
+
+    # 4. Возврат результата
+    return {
+        "booking_id": booking.id,
+        "final_amount": booking.final_amount,
+        "status": booking.status
+    }
