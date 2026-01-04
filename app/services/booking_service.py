@@ -1,89 +1,71 @@
-# app/services/booking_service.py
-from dataclasses import dataclass
-from datetime import date
-from typing import Optional
+from datetime import datetime
+from app.db import SessionLocal
+from app.models import Booking, Customer, Room
 
-LUNCH_PRICE = 600
-DINNER_PRICE = 800
+def calculate_booking(data):
+    """
+    Расчёт стоимости брони без скидки за повторный заезд.
+    """
+    start_date = datetime.strptime(data["start_date"], "%Y-%m-%d")
+    end_date = datetime.strptime(data["end_date"], "%Y-%m-%d")
+    nights = (end_date - start_date).days
 
-@dataclass
-class BookingInput:
-    base_price_per_night: int
-    guests_count: int
-    nights: int
-    lunch_selected: bool
-    dinner_selected: bool
-    is_repeat_within_year: bool
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    base_price = float(data["base_price_per_night"])
+    guests = int(data["guests_count"])
+    lunch_count = int(data.get("lunch_count", 0))
+    dinner_count = int(data.get("dinner_count", 0))
 
-def calculate_booking_amount(data: BookingInput) -> dict:
-    if data.guests_count <= 0 or data.nights <= 0 or data.base_price_per_night <= 0:
-        raise ValueError("Некорректные входные данные для расчёта.")
+    # Стоимость проживания
+    amount = nights * base_price
 
-    base_total = data.base_price_per_night * data.nights
-
-    meals_total = 0
-    if data.lunch_selected:
-        meals_total += LUNCH_PRICE * data.guests_count * data.nights
-    if data.dinner_selected:
-        meals_total += DINNER_PRICE * data.guests_count * data.nights
-
-    discount_repeat = 5.0 if data.is_repeat_within_year else 0.0
-    discount_nights = 5.0 if data.nights >= 3 else 0.0
-    discount_sum_percent = discount_repeat + discount_nights
-
-    subtotal = base_total + meals_total
-    final_amount = round(subtotal * (1 - discount_sum_percent / 100))
+    # Питание
+    amount += lunch_count * 500
+    amount += dinner_count * 700
 
     return {
-        "base_total": base_total,
-        "meals_total": meals_total,
-        "discount_repeat": discount_repeat,
-        "discount_nights": discount_nights,
-        "discount_sum_percent": discount_sum_percent,
-        "final_amount": final_amount,
+        "nights": nights,
+        "base_price_per_night": base_price,
+        "guests_count": guests,
+        "lunch_count": lunch_count,
+        "dinner_count": dinner_count,
+        "final_amount": amount,
     }
-from datetime import date
-from app.models import Booking
-from .booking_service import calculate_booking_amount, BookingInput
 
-
-def create_booking(session, room_id: int, customer_id: int, data: BookingInput) -> dict:
+def create_booking(data):
     """
-    Создаёт бронирование в базе данных.
+    Создание брони в БД.
     """
+    session = SessionLocal()
+    result = calculate_booking(data)
 
-    # 1. Расчёт стоимости
-    calc = calculate_booking_amount(data)
+    # Новый клиент
+    if data["customer_id"] == "new":
+        customer = Customer(
+            full_name=data["full_name"],
+            phone=data["phone"],
+            email=data["email"]
+        )
+        session.add(customer)
+        session.commit()
+        customer_id = customer.id
+    else:
+        customer_id = int(data["customer_id"])
 
-    # 2. Создание объекта Booking
     booking = Booking(
-        room_id=room_id,
         customer_id=customer_id,
-        start_date=data.start_date,
-        end_date=data.end_date,
-        guests_count=data.guests_count,
-        breakfast_count=data.guests_count * data.nights,  # завтрак включён
-        lunch_count=data.guests_count * data.nights if data.lunch_selected else 0,
-        dinner_count=data.guests_count * data.nights if data.dinner_selected else 0,
-        is_repeat_within_year=data.is_repeat_within_year,
-        discount_repeat=calc["discount_repeat"],
-        discount_nights=calc["discount_nights"],
-        total_amount=calc["base_total"] + calc["meals_total"],
-        final_amount=calc["final_amount"],
-        status="created",
-        created_at=date.today()
+        room_id=int(data["room_id"]),
+        start_date=datetime.strptime(data["start_date"], "%Y-%m-%d"),
+        end_date=datetime.strptime(data["end_date"], "%Y-%m-%d"),
+        guests_count=int(data["guests_count"]),
+        base_price_per_night=float(data["base_price_per_night"]),
+        lunch_count=int(data.get("lunch_count", 0)),
+        dinner_count=int(data.get("dinner_count", 0)),
+        final_amount=result["final_amount"],
+        status="created"
     )
-
-    # 3. Сохранение в БД
     session.add(booking)
     session.commit()
-    session.refresh(booking)
 
-    # 4. Возврат результата
-    return {
-        "booking_id": booking.id,
-        "final_amount": booking.final_amount,
-        "status": booking.status
-    }
+    result["booking_id"] = booking.id
+    result["status"] = booking.status
+    return result

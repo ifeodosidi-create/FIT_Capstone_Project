@@ -4,15 +4,18 @@
   <meta charset="utf-8">
   <title>Гостиница — GUI</title>
   <style>
-    body { font-family: Arial; margin: 2rem; }
-    .nav a { margin-right: 1rem; }
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    .nav { margin-bottom: 1rem; }
+    .nav a { margin-right: 1rem; text-decoration: none; color: #0366d6; }
+    .nav a:hover { text-decoration: underline; }
     .flash { padding: .5rem 1rem; margin: .5rem 0; border-radius: 4px; }
-    .flash.error { background: #ffd5d5; }
-    .flash.success { background: #d5ffd9; }
-    .flash.info { background: #d5e9ff; }
+    .flash.error { background: #ffd5d5; color: #900; }
+    .flash.success { background: #d5ffd9; color: #060; }
+    .flash.info { background: #d5e9ff; color: #036; }
   </style>
 </head>
 <body>
+  <!-- Навигация -->
   <div class="nav">
     <a href="/">Главная</a>
     <a href="/client/booking/create">Создать бронь</a>
@@ -20,6 +23,7 @@
     <a href="/client/booking/cancel">Отмена</a>
   </div>
 
+  <!-- Flash-сообщения -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
@@ -28,7 +32,10 @@
     {% endif %}
   {% endwith %}
 
-  <h1>GUI клиента</h1>
-  <p>Выберите действие в навигации выше.</p>
+  <!-- Контент дочерних шаблонов -->
+  {% block content %}
+    <h2>Добро пожаловать в раздел бронирования!</h2>
+    <p>Выберите нужное действие.</p>
+  {% endblock %}
 </body>
 </html>

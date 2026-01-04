@@ -1,9 +1,6 @@
-<!doctype html>
-<html lang="ru">
-<head><meta charset="utf-8"><title>Результат</title></head>
-<body>
-<h2>Результат</h2>
-<pre>{{ result | tojson(indent=2) }}</pre>
-<a href="/">На главную</a>
-</body>
-</html>
+{% extends "layout.html" %}
+
+{% block content %}
+<h2>Результат операции</h2>
+<pre>{{ result | tojson(indent=2, ensure_ascii=False) }}</pre>
+{% endblock %}
