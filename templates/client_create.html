@@ -3,12 +3,15 @@
 {% block content %}
 <h2>Создание брони</h2>
 
-<form method="post" action="/client/booking/create">
+<form method="post" action="/client/booking/preview">
   <!-- выбор комнаты -->
   <label>Комната:</label>
   <select name="room_id" required>
     {% for r in rooms %}
-      <option value="{{ r.id }}">№{{ r.number }} (вместимость {{ r.capacity }} гост.)</option>
+      <option value="{{ r.id }}">
+        №{{ r.number }} — {{ r.category.name if r.category else "не указан" }}
+        ({{ r.price_per_night }} ₽/ночь, вместимость {{ r.capacity }} гост.)
+      </option>
     {% endfor %}
   </select><br>
 
@@ -23,35 +26,20 @@
 
   <!-- поля для нового клиента -->
   <div>
-    <label>ФИО:</label><input name="full_name" placeholder="Иванов Иван Иванович"><br>
-    <label>Телефон:</label><input name="phone" placeholder="+71234567890"><br>
-    <label>Email:</label><input name="email" placeholder="user@example.com"><br>
+    <label>ФИО:</label><input name="full_name"><br>
+    <label>Телефон:</label><input name="phone"><br>
+    <label>Email:</label><input name="email"><br>
   </div>
 
   <!-- параметры брони -->
-  <label>Базовая цена за ночь:</label><input name="base_price_per_night" value="3000"><br>
-  <label>Гостей:</label><input name="guests_count" value="2"><br>
-
-  <!-- питание -->
-  <label>Обеды (кол-во):</label><input type="number" name="lunch_count" value="0" min="0"><br>
-  <label>Ужины (кол-во):</label><input type="number" name="dinner_count" value="0" min="0"><br>
+  <label>Гостей:</label><input type="number" name="guests_count" value="2" min="1"><br>
+  <label>Обеды:</label><input type="number" name="lunch_count" value="0" min="0"><br>
+  <label>Ужины:</label><input type="number" name="dinner_count" value="0" min="0"><br>
 
   <!-- даты -->
   <label>Дата начала:</label><input type="date" name="start_date" required>
   <label>Дата конца:</label><input type="date" name="end_date" required><br>
 
-  <button type="submit">Создать</button>
-</form>
-
-<!-- форма только для расчёта -->
-<form method="post" action="/client/booking/calculate" style="margin-top:1rem;">
-  <h3>Только расчёт суммы</h3>
-  <input name="base_price_per_night" value="3000">
-  <input name="guests_count" value="2">
-  <label>Обеды (кол-во):</label><input type="number" name="lunch_count" value="0" min="0">
-  <label>Ужины (кол-во):</label><input type="number" name="dinner_count" value="0" min="0">
-  <label>Дата начала:</label><input type="date" name="start_date" required>
-  <label>Дата конца:</label><input type="date" name="end_date" required>
-  <button type="submit">Посчитать</button>
+  <button type="submit">Создать бронь</button>
 </form>
 {% endblock %}

@@ -1,6 +1,20 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<h2>Результат операции</h2>
-<pre>{{ result | tojson(indent=2, ensure_ascii=False) }}</pre>
+<h2>Результат бронирования</h2>
+
+{% if result.booking_id %}
+  <p><strong>ID брони:</strong> {{ result.booking_id }}</p>
+  <p><strong>Категория комнаты:</strong> {{ result.room_category }}</p>
+  <p><strong>Цена за ночь:</strong> {{ result.base_price_per_night }} ₽</p>
+  <p><strong>Количество ночей:</strong> {{ result.nights }}</p>
+  <p><strong>Гостей:</strong> {{ result.guests_count }}</p>
+  <p><strong>Обеды:</strong> {{ result.lunch_count }}</p>
+  <p><strong>Ужины:</strong> {{ result.dinner_count }}</p>
+  <p><strong>Итоговая сумма:</strong> {{ result.final_amount }} ₽</p>
+{% else %}
+  <p style="color:red;"><strong>Ошибка:</strong> {{ result }}</p>
+{% endif %}
+
+<a href="{{ url_for('client.client_booking_form') }}">Назад к форме</a>
 {% endblock %}

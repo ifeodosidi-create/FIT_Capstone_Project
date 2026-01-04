@@ -1,160 +1,113 @@
-from flask import Blueprint, request, jsonify
-from datetime import datetime, date
+# -*- coding: utf-8 -*-
+from datetime import datetime
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
+from app.models import Room, Customer
 from app.services.booking_service import calculate_booking, create_booking
-from app.models import Booking, Payment
 
 client_bp = Blueprint("client", __name__)
 
+def _load_form_lists(session: Session):
+    rooms = session.query(Room).all()
+    customers = session.query(Customer).all()
+    return rooms, customers
 
-# ---------------------------------------------------------
-# 1) Расчёт стоимости бронирования
-# ---------------------------------------------------------
-@client_bp.route("/booking/calculate", methods=["POST"])
-def calculate_booking_route():
-    """
-    Принимает параметры бронирования и возвращает рассчитанную сумму.
-    """
-    data = request.get_json()
+def _parse_dates(start: str, end: str):
     try:
-        start_date = datetime.strptime(data["start_date"], "%Y-%m-%d").date()
-        end_date = datetime.strptime(data["end_date"], "%Y-%m-%d").date()
-        nights = (end_date - start_date).days
-        if nights <= 0:
-            return jsonify({"error": "Дата выезда должна быть позже даты заезда"}), 400
+        start_date = datetime.strptime(start, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None, None, "Неверный формат даты."
+    if end_date <= start_date:
+        return None, None, "Дата выезда должна быть позже даты заезда."
+    return start_date, end_date, None
 
-        booking_data = {
-            "base_price_per_night": data["base_price_per_night"],
-            "guests_count": data["guests_count"],
+def _build_data(form):
+    room_id = form.get("room_id")
+    start = form.get("start_date")
+    end = form.get("end_date")
+    if not room_id or not start or not end:
+        return None, "Не хватает данных."
+    start_date, end_date, err = _parse_dates(start, end)
+    if err:
+        return None, err
+    nights = (end_date - start_date).days
+    try:
+        return {
+            "room_id": int(room_id),
             "nights": nights,
-            "lunch_count": data.get("lunch_count", 0),
-            "dinner_count": data.get("dinner_count", 0),
-            "start_date": data["start_date"],
-            "end_date": data["end_date"],
-        }
-        result = calculate_booking(booking_data)
-        return jsonify(result)
+            "guests_count": int(form.get("guests_count", "1")),
+            "lunch_count": int(form.get("lunch_count", "0")),
+            "dinner_count": int(form.get("dinner_count", "0")),
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+        }, None
+    except ValueError:
+        return None, "Некорректные числовые значения."
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-
-# ---------------------------------------------------------
-# 2) Создание бронирования
-# ---------------------------------------------------------
-@client_bp.route("/booking/create", methods=["POST"])
-def create_booking_route():
-    """
-    Создание бронирования в базе данных.
-    """
-    data = request.get_json()
+# -----------------------------
+# Форма брони
+# -----------------------------
+@client_bp.route("/booking/form", methods=["GET"])
+def client_booking_form():
     session: Session = SessionLocal()
     try:
-        start_date = datetime.strptime(data["start_date"], "%Y-%m-%d").date()
-        end_date = datetime.strptime(data["end_date"], "%Y-%m-%d").date()
-        nights = (end_date - start_date).days
-        if nights <= 0:
-            return jsonify({"error": "Дата выезда должна быть позже даты заезда"}), 400
-
-        booking_data = {
-            "base_price_per_night": data["base_price_per_night"],
-            "guests_count": data["guests_count"],
-            "nights": nights,
-            "lunch_count": data.get("lunch_count", 0),
-            "dinner_count": data.get("dinner_count", 0),
-            "start_date": data["start_date"],
-            "end_date": data["end_date"],
-            "customer_id": data["customer_id"],
-            "room_id": data["room_id"],
-        }
-
-        result = create_booking(booking_data)
-        return jsonify(result), 201
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        rooms, customers = _load_form_lists(session)
+        return render_template("client_create.html", rooms=rooms, customers=customers)
     finally:
         session.close()
 
+# -----------------------------
+# Первый шаг: показать расчёт и кнопку подтверждения
+# -----------------------------
+@client_bp.route("/booking/preview", methods=["POST"])
+def client_booking_preview():
+    data, err = _build_data(request.form)
+    if err:
+        flash(err)
+        return redirect(url_for("client.client_booking_form"))
 
-# ---------------------------------------------------------
-# 3) Оплата бронирования
-# ---------------------------------------------------------
-@client_bp.route("/booking/pay", methods=["POST"])
-def pay_booking_route():
-    """
-    Имитация эквайринга: создаёт Payment и меняет статус брони.
-    """
-    data = request.get_json()
-    session: Session = SessionLocal()
+    customer_id = request.form.get("customer_id", "new")
+    full_name = request.form.get("full_name")
+    phone = request.form.get("phone")
+    email = request.form.get("email")
+
+    if customer_id != "new":
+        try:
+            data["customer_id"] = int(customer_id)
+        except ValueError:
+            flash("Некорректный идентификатор клиента.")
+            return redirect(url_for("client.client_booking_form"))
+    else:
+        # новый клиент — обязательно ФИО и телефон
+        if not full_name or not phone:
+            flash("Для нового клиента укажите ФИО и телефон.")
+            return redirect(url_for("client.client_booking_form"))
+        data["customer_id"] = None
+        data["full_name"] = full_name
+        data["phone"] = phone
+        if email:
+            data["email"] = email
+
     try:
-        booking_id = data["booking_id"]
-        method = data["method"]
-
-        booking = session.query(Booking).filter_by(id=booking_id).first()
-        if not booking:
-            return jsonify({"error": "Бронирование не найдено"}), 404
-
-        if data.get("confirm") is not True:
-            return jsonify({"message": "Здесь должен быть эквайринг. Подтвердите платеж."})
-
-        payment = Payment(
-            booking_id=booking_id,
-            amount=booking.final_amount,
-            method=method,
-            status="success",
-            payment_date=date.today()
-        )
-        booking.status = "paid"
-        session.add(payment)
-        session.commit()
-
-        return jsonify({
-            "booking_id": booking_id,
-            "payment_id": payment.id,
-            "status": "paid"
-        })
-
+        result = calculate_booking(data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
-    finally:
-        session.close()
+        flash(f"Ошибка расчёта: {e}")
+        return redirect(url_for("client.client_booking_form"))
 
+    return render_template("client_preview.html", data=data, result=result)
 
-# ---------------------------------------------------------
-# 4) Отмена бронирования
-# ---------------------------------------------------------
-@client_bp.route("/booking/cancel", methods=["POST"])
-def cancel_booking_route():
-    """
-    Отмена бронирования.
-    Условия:
-    - отмена возможна, если до заезда >= 1 день
-    - если оплачено → вывести сообщение о возврате по телефону
-    """
-    data = request.get_json()
-    session: Session = SessionLocal()
+# -----------------------------
+# Второй шаг: подтверждение и сохранение
+# -----------------------------
+@client_bp.route("/booking/confirm", methods=["POST"])
+def client_booking_confirm():
+    data = dict(request.form)
     try:
-        booking_id = data["booking_id"]
-        booking = session.query(Booking).filter_by(id=booking_id).first()
-        if not booking:
-            return jsonify({"error": "Бронирование не найдено"}), 404
-
-        today = date.today()
-        if booking.start_date <= today:
-            return jsonify({"error": "Отмена невозможна: до заезда меньше 1 дня"}), 400
-
-        booking.status = "cancelled"
-        session.commit()
-
-        msg = {"booking_id": booking_id, "status": "cancelled"}
-        if booking.status == "paid":
-            msg["message"] = "За возвратом денежных средств обращайтесь по телефону 880012345678"
-        return jsonify(msg)
-
+        result = create_booking(data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
-    finally:
-        session.close()
+        flash(f"Ошибка создания брони: {e}")
+        return redirect(url_for("client.client_booking_form"))
+    return render_template("client_result.html", result=result)
