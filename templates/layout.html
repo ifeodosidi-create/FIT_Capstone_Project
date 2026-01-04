@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Гостиница — GUI</title>
+  <style>
+    body { font-family: Arial; margin: 2rem; }
+    .nav a { margin-right: 1rem; }
+    .flash { padding: .5rem 1rem; margin: .5rem 0; border-radius: 4px; }
+    .flash.error { background: #ffd5d5; }
+    .flash.success { background: #d5ffd9; }
+    .flash.info { background: #d5e9ff; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="/">Главная</a>
+    <a href="/client/booking/create">Создать бронь</a>
+    <a href="/client/booking/pay">Оплата</a>
+    <a href="/client/booking/cancel">Отмена</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <h1>GUI клиента</h1>
+  <p>Выберите действие в навигации выше.</p>
+</body>
+</html>

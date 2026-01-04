@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Создание брони</title></head>
+<body>
+<h2>Создание брони</h2>
+<form method="post" action="/client/booking/create">
+  <label>Комната:</label>
+  <select name="room_id">
+    {% for r in rooms %}<option value="{{ r.id }}">№{{ r.number }} ({{ r.capacity }} гост.)</option>{% endfor %}
+  </select><br>
+
+  <label>Клиент:</label>
+  <select name="customer_id">
+    {% for c in customers %}<option value="{{ c.id }}">{{ c.full_name }}</option>{% endfor %}
+  </select><br>
+
+  <label>Телефон:</label><input name="phone" placeholder="+71234567890"><br>
+  <label>Email:</label><input name="email" placeholder="user@example.com"><br>
+
+  <label>Базовая цена за ночь:</label><input name="base_price_per_night" value="3000"><br>
+  <label>Гостей:</label><input name="guests_count" value="2"><br>
+  <label>Ночей:</label><input name="nights" value="3"><br>
+
+  <label>Обед:</label><input type="checkbox" name="lunch_selected">
+  <label>Ужин:</label><input type="checkbox" name="dinner_selected">
+  <label>Повторная бронь в течение года:</label><input type="checkbox" name="is_repeat_within_year"><br>
+
+  <label>Дата начала:</label><input type="date" name="start_date">
+  <label>Дата конца:</label><input type="date" name="end_date"><br>
+
+  <button type="submit">Создать</button>
+</form>
+
+<form method="post" action="/client/booking/calculate" style="margin-top:1rem;">
+  <h3>Только расчёт суммы</h3>
+  <input name="base_price_per_night" value="3000">
+  <input name="guests_count" value="2">
+  <input name="nights" value="3">
+  <label>Обед:</label><input type="checkbox" name="lunch_selected">
+  <label>Ужин:</label><input type="checkbox" name="dinner_selected">
+  <label>Повторная бронь:</label><input type="checkbox" name="is_repeat_within_year">
+  <button type="submit">Посчитать</button>
+</form>
+</body>
+</html>

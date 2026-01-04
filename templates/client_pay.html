@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Оплата брони</title></head>
+<body>
+<h2>Оплата брони</h2>
+<form method="post" action="/client/booking/pay">
+  <label>ID брони:</label><input name="booking_id" required><br>
+  <label>Метод:</label>
+  <select name="method">
+    <option value="card">Карта</option>
+    <option value="cash">Наличные</option>
+    <option value="online">Онлайн</option>
+    <option value="bank">Банк</option>
+  </select><br>
+  <p>Здесь должен быть эквайринг</p>
+  <label>Подтвердить платеж?</label>
+  <select name="confirm">
+    <option value="no">Нет</option>
+    <option value="yes">Да</option>
+  </select><br>
+  <button type="submit">Оплатить</button>
+</form>
+</body>
+</html>
