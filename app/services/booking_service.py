@@ -1,71 +1,79 @@
 from datetime import datetime
+from sqlalchemy.orm import Session
+
 from app.db import SessionLocal
-from app.models import Booking, Customer, Room
+from app.models import Booking
 
-def calculate_booking(data):
-    """
-    Расчёт стоимости брони без скидки за повторный заезд.
-    """
-    start_date = datetime.strptime(data["start_date"], "%Y-%m-%d")
-    end_date = datetime.strptime(data["end_date"], "%Y-%m-%d")
-    nights = (end_date - start_date).days
 
+# -----------------------------
+# Расчёт стоимости бронирования
+# -----------------------------
+def calculate_booking(data: dict) -> dict:
+    """
+    Рассчитывает итоговую стоимость бронирования.
+    Ожидает словарь с ключами:
+    - base_price_per_night
+    - guests_count
+    - nights
+    - lunch_count
+    - dinner_count
+    """
     base_price = float(data["base_price_per_night"])
     guests = int(data["guests_count"])
+    nights = int(data["nights"])
     lunch_count = int(data.get("lunch_count", 0))
     dinner_count = int(data.get("dinner_count", 0))
 
     # Стоимость проживания
-    amount = nights * base_price
+    total = base_price * nights
 
-    # Питание
-    amount += lunch_count * 500
-    amount += dinner_count * 700
+    # Питание (фиксированные цены)
+    total += lunch_count * 500
+    total += dinner_count * 800
 
     return {
+        "final_amount": total,
         "nights": nights,
-        "base_price_per_night": base_price,
         "guests_count": guests,
         "lunch_count": lunch_count,
         "dinner_count": dinner_count,
-        "final_amount": amount,
     }
 
-def create_booking(data):
-    """
-    Создание брони в БД.
-    """
-    session = SessionLocal()
-    result = calculate_booking(data)
 
-    # Новый клиент
-    if data["customer_id"] == "new":
-        customer = Customer(
-            full_name=data["full_name"],
-            phone=data["phone"],
-            email=data["email"]
+# -----------------------------
+# Создание бронирования
+# -----------------------------
+def create_booking(data: dict) -> dict:
+    """
+    Создаёт запись Booking в базе.
+    Ожидает словарь с ключами:
+    - base_price_per_night, guests_count, nights, lunch_count, dinner_count
+    - start_date, end_date, customer_id, room_id
+    """
+    session: Session = SessionLocal()
+    try:
+        # расчёт суммы
+        result = calculate_booking(data)
+
+        booking = Booking(
+            room_id=data["room_id"],
+            customer_id=data["customer_id"],
+            start_date=datetime.strptime(data["start_date"], "%Y-%m-%d").date(),
+            end_date=datetime.strptime(data["end_date"], "%Y-%m-%d").date(),
+            final_amount=result["final_amount"],
+            status="created"
         )
-        session.add(customer)
+
+        session.add(booking)
         session.commit()
-        customer_id = customer.id
-    else:
-        customer_id = int(data["customer_id"])
 
-    booking = Booking(
-        customer_id=customer_id,
-        room_id=int(data["room_id"]),
-        start_date=datetime.strptime(data["start_date"], "%Y-%m-%d"),
-        end_date=datetime.strptime(data["end_date"], "%Y-%m-%d"),
-        guests_count=int(data["guests_count"]),
-        base_price_per_night=float(data["base_price_per_night"]),
-        lunch_count=int(data.get("lunch_count", 0)),
-        dinner_count=int(data.get("dinner_count", 0)),
-        final_amount=result["final_amount"],
-        status="created"
-    )
-    session.add(booking)
-    session.commit()
-
-    result["booking_id"] = booking.id
-    result["status"] = booking.status
-    return result
+        return {
+            "booking_id": booking.id,
+            "final_amount": result["final_amount"],
+            "nights": result["nights"],
+            "guests_count": result["guests_count"],
+            "lunch_count": result["lunch_count"],
+            "dinner_count": result["dinner_count"],
+        }
+    finally:
+        session.close()
