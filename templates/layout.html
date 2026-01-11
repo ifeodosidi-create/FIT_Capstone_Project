@@ -4,14 +4,19 @@
   <meta charset="utf-8">
   <title>Гостиница — GUI</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 2rem; }
-    .nav { margin-bottom: 1rem; }
-    .nav a { margin-right: 1rem; text-decoration: none; color: #0366d6; }
+    body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; }
+    .nav { margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid #ddd; }
+    .nav a { margin-right: 1rem; text-decoration: none; color: #0366d6; font-weight: bold; }
     .nav a:hover { text-decoration: underline; }
     .flash { padding: .5rem 1rem; margin: .5rem 0; border-radius: 4px; }
     .flash.error { background: #ffd5d5; color: #900; }
     .flash.success { background: #d5ffd9; color: #060; }
     .flash.info { background: #d5e9ff; color: #036; }
+    h2 { margin-top: 1.5rem; }
+    table { border-collapse: collapse; margin-top: 1rem; width: 100%; }
+    table th, table td { border: 1px solid #ccc; padding: .5rem; text-align: left; }
+    table th { background: #eee; }
+    img { margin-top: .5rem; margin-bottom: .5rem; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -21,6 +26,10 @@
     <a href="/client/booking/create">Создать бронь</a>
     <a href="/client/booking/pay">Оплата</a>
     <a href="/client/booking/cancel">Отмена</a>
+    <a href="/admin/dashboard">Админка — графики</a>
+    <a href="/admin/bookings">Все брони (JSON)</a>
+    <a href="/admin/payments">Все платежи (JSON)</a>
+    <a href="/admin/transactions">Все транзакции (JSON)</a>
   </div>
 
   <!-- Flash-сообщения -->
@@ -34,8 +43,8 @@
 
   <!-- Контент дочерних шаблонов -->
   {% block content %}
-    <h2>Добро пожаловать в раздел бронирования!</h2>
-    <p>Выберите нужное действие.</p>
+    <h2>Добро пожаловать в систему бронирования!</h2>
+    <p>Выберите нужное действие в меню выше.</p>
   {% endblock %}
 </body>
 </html>

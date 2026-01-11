@@ -9,4 +9,13 @@
 
   <button type="submit">Отменить</button>
 </form>
+
+{% if result %}
+  <h3>Результат:</h3>
+  <p><strong>ID брони:</strong> {{ result.booking_id }}</p>
+  <p><strong>Статус:</strong> {{ result.status }}</p>
+  {% if result.message %}
+    <p><strong>Сообщение:</strong> {{ result.message }}</p>
+  {% endif %}
+{% endif %}
 {% endblock %}

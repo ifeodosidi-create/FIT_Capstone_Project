@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h2>Админка — анализ и графики</h2>
+
+<!-- Фильтр по датам -->
+<form method="get" action="{{ url_for('admin.admin_dashboard') }}" style="margin-bottom: 1rem;">
+  <label>Период: </label>
+  <input type="date" name="start_date" value="{{ start_date }}">
+  <input type="date" name="end_date" value="{{ end_date }}">
+  <button type="submit">Применить</button>
+</form>
+
+<!-- Доходы по категориям -->
+<h3>Доходы по категориям</h3>
+{% if income_plot %}
+  <img src="{{ url_for('static', filename=income_plot) }}" 
+       alt="Доходы по категориям" style="max-width: 100%; height: auto;">
+{% else %}
+  <p>Нет данных для отображения.</p>
+{% endif %}
+<table>
+  <thead><tr><th>Категория</th><th>Доход, ₽</th></tr></thead>
+  <tbody>
+  {% for row in income_df %}
+    <tr><td>{{ row.category_name or '—' }}</td><td>{{ row.income }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<hr>
+
+<!-- Гости по месяцам -->
+<h3>Гости по месяцам</h3>
+{% if guests_plot %}
+  <img src="{{ url_for('static', filename=guests_plot) }}" 
+       alt="Гости по месяцам" style="max-width: 100%; height: auto;">
+{% else %}
+  <p>Нет данных для отображения.</p>
+{% endif %}
+<table>
+  <thead><tr><th>Месяц</th><th>Гости</th></tr></thead>
+  <tbody>
+  {% for row in guests_df %}
+    <tr><td>{{ row.month }}</td><td>{{ row.guests }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<hr>
+
+<!-- Топ-5 популярных номеров -->
+<h3>Топ‑5 популярных номеров</h3>
+{% if top_plot %}
+  <img src="{{ url_for('static', filename=top_plot) }}" 
+       alt="Топ номеров" style="max-width: 100%; height: auto;">
+{% else %}
+  <p>Нет данных для отображения.</p>
+{% endif %}
+<table>
+  <thead><tr><th>Номер (категория)</th><th>Броней</th></tr></thead>
+  <tbody>
+  {% for row in top_df %}
+    <tr><td>{{ row.room_label }}</td><td>{{ row.bookings_count }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
